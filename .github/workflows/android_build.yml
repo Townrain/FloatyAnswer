@@ -26,6 +26,11 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
+    # 本地用国内镜像加速，CI runner 在海外改用官方源，避免卡在 215MB 的镜像下载上
+    - name: Use official Gradle distribution
+      run: |
+        sed -i 's|^distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-bin.zip|' gradle/wrapper/gradle-wrapper.properties
+        sed -i 's|^networkTimeout=.*|networkTimeout=60000|' gradle/wrapper/gradle-wrapper.properties
     - uses: actions/setup-java@v4
       with:
         java-version: '17'
@@ -53,6 +58,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v4
+    # 本地用国内镜像加速，CI runner 在海外改用官方源，避免卡在 215MB 的镜像下载上
+    - name: Use official Gradle distribution
+      run: |
+        sed -i 's|^distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-bin.zip|' gradle/wrapper/gradle-wrapper.properties
+        sed -i 's|^networkTimeout=.*|networkTimeout=60000|' gradle/wrapper/gradle-wrapper.properties
     - uses: actions/setup-java@v4
       with:
         java-version: '17'
@@ -97,6 +107,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v4
+    # 本地用国内镜像加速，CI runner 在海外改用官方源，避免卡在 215MB 的镜像下载上
+    - name: Use official Gradle distribution
+      run: |
+        sed -i 's|^distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-bin.zip|' gradle/wrapper/gradle-wrapper.properties
+        sed -i 's|^networkTimeout=.*|networkTimeout=60000|' gradle/wrapper/gradle-wrapper.properties
     - uses: actions/setup-java@v4
       with:
         java-version: '17'
