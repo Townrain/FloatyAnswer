@@ -1,6 +1,4 @@
-﻿import java.io.FileInputStream
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
@@ -89,9 +87,7 @@ android {
             // 使用安全的方式重命名APK，避免依赖AGP内部API
             try {
                 val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-                val date = SimpleDateFormat("yyyyMMdd-HHmm").format(Date())
-                outputImpl.outputFileName =
-                    "${date}_FloatyAnswer_v${versionNameValue}.apk"
+                outputImpl.outputFileName = "FloatyAnswer_v${versionNameValue}.apk"
             } catch (e: Exception) {
                 println("Warning: Could not rename APK output: ${e.message}")
             }
