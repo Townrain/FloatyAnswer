@@ -2,7 +2,7 @@
   "version": 2,
   "generatedAt": "2026-07-17T12:07:38Z",
   "providerCount": 46,
-  "modelCount": 1500,
+  "modelCount": 1501,
   "source": "opencode",
   "providers": [
     {
@@ -97,6 +97,11 @@
       "apiHost": "https://api.deepseek.com/v1",
       "anthropicApiHost": null,
       "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "deepseek-flash",
+          "group": "DeepSeek"
+        },
         {
           "id": "deepseek-chat",
           "name": "deepseek-chat",

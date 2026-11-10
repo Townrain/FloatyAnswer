@@ -12,7 +12,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkConstructor
 import io.mockk.mockkObject
+import io.mockk.unmockkConstructor
 import io.mockk.unmockkObject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -33,6 +38,7 @@ import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import java.io.IOException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 class OpenAIClientTest {
@@ -362,15 +368,26 @@ data: [DONE]
     @Test
     fun `testConnection - UnknownHost returns error`() = runBlocking {
         every { MyApplication.getString(R.string.error_api_unknown_host) } returns "unknown_host"
+        // Simulate DNS failure so a system proxy cannot replace it with an HTTP error.
+        mockkConstructor(OkHttpClient::class)
+        try {
+            val failedCall = mockk<Call>(relaxed = true)
+            every { anyConstructed<OkHttpClient>().newCall(any()) } returns failedCall
+            every { failedCall.enqueue(any()) } answers {
+                firstArg<Callback>().onFailure(failedCall, UnknownHostException("test host"))
+            }
 
-        val result = client.testConnection(
-            "http://thishostdoesnotexist.invalid/v1/chat/completions",
-            "test-key",
-            "test-model"
-        )
+            val result = client.testConnection(
+                "http://thishostdoesnotexist.invalid/v1/chat/completions",
+                "test-key",
+                "test-model"
+            )
 
-        assertTrue(result.isFailure)
-        assertEquals("unknown_host", result.exceptionOrNull()?.message)
+            assertTrue(result.isFailure)
+            assertEquals("unknown_host", result.exceptionOrNull()?.message)
+        } finally {
+            unmockkConstructor(OkHttpClient::class)
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
