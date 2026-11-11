@@ -1,6 +1,8 @@
 package com.hwb.aianswerer.providers
 
+import com.hwb.aianswerer.BuildConfig
 import com.hwb.aianswerer.api.vision.VisionProviderFactory
+import com.hwb.aianswerer.config.AppConfig
 import com.hwb.aianswerer.config.ConfigStorage
 import com.tencent.mmkv.MMKV
 import io.mockk.*
@@ -19,6 +21,7 @@ class ProviderConfigResolverTest {
         mockkObject(ConfigStorage)
         mockkObject(ProviderStorage)
         every { ConfigStorage.requireMmkv() } returns mmkvMock
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns emptyList()
     }
 
     @After
@@ -72,6 +75,83 @@ class ProviderConfigResolverTest {
         val result = ProviderConfigResolver.resolveApiProvider()
         assertNotNull(result)
         assertEquals("p-a", result!!.id)
+        assertSame(providerA, result)
+    }
+
+    @Test
+    fun `resolveApiProvider - custom-only saved configuration supplies URL key and model`() {
+        val customProvider = createTestProvider(
+            id = "custom",
+            apiHost = "https://api.deepseek.com",
+            apiKey = "sk-custom-key",
+            selectedModels = listOf("deepseek-flash")
+        )
+        every { ProviderStorage.getMergedProviders() } returns emptyList()
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(customProvider)
+        every { mmkvMock.decodeString(ConfigStorage.KEY_MODEL_NAME, any()) } returns "deepseek-flash"
+
+        assertSame(customProvider, ProviderConfigResolver.resolveApiProvider())
+        assertEquals("https://api.deepseek.com/v1/chat/completions", ProviderConfigResolver.resolveApiUrl())
+        assertEquals("sk-custom-key", ProviderConfigResolver.resolveApiKey())
+        assertEquals("deepseek-flash", ProviderConfigResolver.resolveModelName())
+    }
+
+    @Test
+    fun `resolveApiProvider - selected custom provider takes precedence over other enabled providers`() {
+        val catalogProvider = createTestProvider()
+        val customProvider = createTestProvider(
+            id = "custom",
+            apiHost = "https://api.deepseek.com/v1",
+            apiKey = "sk-custom-key",
+            selectedModels = listOf("deepseek-flash")
+        )
+        every { ProviderStorage.getMergedProviders() } returns listOf(catalogProvider)
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(catalogProvider, customProvider)
+        every { mmkvMock.decodeString(ConfigStorage.KEY_MODEL_NAME, any()) } returns "deepseek-flash"
+
+        assertSame(customProvider, ProviderConfigResolver.resolveApiProvider())
+        assertEquals("https://api.deepseek.com/v1/chat/completions", ProviderConfigResolver.resolveApiUrl())
+        assertEquals("sk-custom-key", ProviderConfigResolver.resolveApiKey())
+    }
+
+    @Test
+    fun `resolveApiProvider - incomplete selected custom provider never uses another provider credentials`() {
+        val catalogProvider = createTestProvider()
+        val customProvider = createTestProvider(
+            id = "custom",
+            apiHost = "https://api.deepseek.com",
+            apiKey = "",
+            selectedModels = listOf("deepseek-flash")
+        )
+        every { ProviderStorage.getMergedProviders() } returns listOf(catalogProvider)
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(catalogProvider, customProvider)
+        every { mmkvMock.decodeString(ConfigStorage.KEY_MODEL_NAME, any()) } returns "deepseek-flash"
+
+        assertNull(ProviderConfigResolver.resolveApiProvider())
+        assertNull(ProviderConfigResolver.resolveApiUrl())
+        assertEquals("", ProviderConfigResolver.resolveApiKey())
+
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(
+            catalogProvider, customProvider.copy(apiHost = "", apiKey = "sk-custom-key")
+        )
+
+        assertNull(ProviderConfigResolver.resolveApiProvider())
+        assertNull(ProviderConfigResolver.resolveApiUrl())
+        assertEquals("", ProviderConfigResolver.resolveApiKey())
+    }
+
+    @Test
+    fun `resolveApiProvider - custom-only configuration works before model selection is persisted`() {
+        val customProvider = createTestProvider(
+            id = "custom",
+            apiHost = "https://api.deepseek.com",
+            selectedModels = listOf("deepseek-flash")
+        )
+        every { ProviderStorage.getMergedProviders() } returns emptyList()
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(customProvider)
+        every { mmkvMock.decodeString(ConfigStorage.KEY_MODEL_NAME, any()) } returns ""
+
+        assertSame(customProvider, ProviderConfigResolver.resolveApiProvider())
     }
 
     @Test
@@ -211,7 +291,8 @@ class ProviderConfigResolverTest {
     @Test
     fun `resolveModelName - provider with selected models returns first name`() {
         val provider = createTestProvider(selectedModels = listOf("gpt-4-turbo", "gpt-4"))
-        every { ProviderStorage.getEnabledProviders() } returns listOf(provider)
+        every { ProviderStorage.getMergedProviders() } returns listOf(provider)
+        every { mmkvMock.decodeString(ConfigStorage.KEY_MODEL_NAME, any()) } returns ""
 
         val result = ProviderConfigResolver.resolveModelName()
         assertEquals("gpt-4-turbo", result)
@@ -219,7 +300,7 @@ class ProviderConfigResolverTest {
 
     @Test
     fun `resolveModelName - no enabled providers returns empty`() {
-        every { ProviderStorage.getEnabledProviders() } returns emptyList()
+        every { ProviderStorage.getMergedProviders() } returns emptyList()
 
         val result = ProviderConfigResolver.resolveModelName()
         assertEquals("", result)
@@ -227,10 +308,35 @@ class ProviderConfigResolverTest {
 
     @Test
     fun `resolveModelName - exception returns empty`() {
-        every { ProviderStorage.getEnabledProviders() } throws RuntimeException("Test exception")
+        every { ProviderStorage.getMergedProviders() } throws RuntimeException("Test exception")
 
         val result = ProviderConfigResolver.resolveModelName()
         assertEquals("", result)
+    }
+
+    @Test
+    fun `AppConfig - selecting the build default model keeps the custom URL key and model together`() {
+        val catalogProvider = createTestProvider(
+            id = "deepseek",
+            apiHost = "https://api.deepseek.com/v1",
+            selectedModels = listOf("deepseek-flash")
+        )
+        val customProvider = createTestProvider(
+            id = "custom",
+            apiHost = "https://custom.example.com/v1",
+            apiKey = "sk-custom-key",
+            selectedModels = listOf("custom-first-model", BuildConfig.API_MODEL)
+        )
+        every { ProviderStorage.getMergedProviders() } returns listOf(catalogProvider)
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(catalogProvider, customProvider)
+        every { ConfigStorage.getSecurePrefs() } returns null
+        every { mmkvMock.decodeString(ConfigStorage.KEY_API_URL, any()) } returns BuildConfig.API_URL
+        every { mmkvMock.decodeString(ConfigStorage.KEY_API_KEY, any()) } returns null
+        every { mmkvMock.decodeString(ConfigStorage.KEY_MODEL_NAME, any()) } returns BuildConfig.API_MODEL
+
+        assertEquals("https://custom.example.com/v1/chat/completions", AppConfig.getApiUrl())
+        assertEquals("sk-custom-key", AppConfig.getApiKey())
+        assertEquals(BuildConfig.API_MODEL, AppConfig.getModelName())
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -276,6 +382,40 @@ class ProviderConfigResolverTest {
         val result = ProviderConfigResolver.resolveVisionProvider()
         assertNotNull(result)
         assertEquals("v-a", result!!.id)
+        assertSame(providerA, result)
+    }
+
+    @Test
+    fun `resolveVisionProvider - saved custom provider supplies vision URL and key without catalog entry`() {
+        val customProvider = createTestProvider(
+            id = "custom",
+            apiHost = "https://api.deepseek.com",
+            apiKey = "sk-custom-vision-key",
+            selectedModels = listOf("deepseek-flash")
+        )
+        every { ProviderStorage.getMergedProviders() } returns listOf(createTestProvider())
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(customProvider)
+        every { mmkvMock.decodeString(ConfigStorage.KEY_VISION_MODEL_NAME, any()) } returns "deepseek-flash"
+
+        assertSame(customProvider, ProviderConfigResolver.resolveVisionProvider())
+        assertEquals("https://api.deepseek.com/v1/chat/completions", ProviderConfigResolver.resolveVisionBaseUrl())
+        assertEquals("sk-custom-vision-key", ProviderConfigResolver.resolveVisionApiKey())
+    }
+
+    @Test
+    fun `resolveVisionProvider - custom provider without API key remains unavailable`() {
+        val customProvider = createTestProvider(
+            id = "custom",
+            apiHost = "https://api.deepseek.com",
+            apiKey = "",
+            selectedModels = listOf("deepseek-flash")
+        )
+        every { ProviderStorage.getMergedProviders() } returns emptyList()
+        every { ProviderStorage.getEnabledProvidersFromUserConfigs() } returns listOf(customProvider)
+        every { mmkvMock.decodeString(ConfigStorage.KEY_VISION_MODEL_NAME, any()) } returns "deepseek-flash"
+
+        assertNull(ProviderConfigResolver.resolveVisionProvider())
+        assertEquals("", ProviderConfigResolver.resolveVisionApiKey())
     }
 
     @Test

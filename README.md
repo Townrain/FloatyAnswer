@@ -1,14 +1,13 @@
-# FloatyAnswer
+# FloatyAnswer · 安卓截图识题助手，支持 DeepSeek Flash 视觉模型
 
 <p align="center">
-<a href="https://github.com/Townrain/FloatyAnswer/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/Townrain/FloatyAnswer"></a>
-<a href="https://github.com/Townrain/FloatyAnswer/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/Townrain/FloatyAnswer"></a>
-<a href="https://github.com/Townrain/FloatyAnswer/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/Townrain/FloatyAnswer/android_build.yml"></a>
-<a href="/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-AGPLv3-blue"></a>
+<a href="https://github.com/delayyyyyyy/FloatyAnswer/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/delayyyyyyy/FloatyAnswer"></a>
+<a href="https://github.com/delayyyyyyy/FloatyAnswer/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/delayyyyyyy/FloatyAnswer/android_build.yml"></a>
+<a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-AGPLv3-blue"></a>
 </p>
 
 
-> 📌 **项目起源**：本项目基于 [wb-hwang/AIAnswerer-Android](https://github.com/wb-hwang/AIAnswerer-Android)（MIT License）Fork 并独立发展。上游已停止维护（最后更新：2025年10月），本仓库持续迭代中。感谢原作者 [@wb-hwang](https://github.com/wb-hwang) 的优秀基础工作。
+> 本仓库基于 Townrain/FloatyAnswer 分叉，沿用 AGPLv3 许可证，补充 DeepSeek Flash 视觉模型兼容与自定义 API 配置修复。项目早期源自采用 MIT 许可证的 wb-hwang/AIAnswerer-Android，感谢两位上游作者的工作。[直接上游](https://github.com/Townrain/FloatyAnswer) · [早期项目](https://github.com/wb-hwang/AIAnswerer-Android)
 
 [中文](#中文使用指南) | [English](README_EN.md)
 
@@ -16,14 +15,25 @@
 
 ### 应用简介
 
-FloatyAnswer 是一款基于 OCR/视觉模型与大语言模型的安卓答题工具。通过悬浮窗截图识别题目，并调用 DeepSeek AI 等兼容 OpenAI 接口的模型为你快速给出答案，适用于练习、查缺补漏或自测场景。
+FloatyAnswer 是一款开源安卓（Android）截图识题与学习助手，通过悬浮球、悬浮窗采集屏幕，使用本地 OCR 或多模态视觉语言模型（VLM）识别题目，再调用大语言模型生成答案和解析。支持 DeepSeek Flash（`deepseek-flash`）与自定义 OpenAI-compatible API，适用于练习、查缺补漏和自测。
+
+### 本分支更新 · DeepSeek Flash 视觉支持
+
+- 将 `deepseek-flash` 加入内置 DeepSeek 模型列表和视觉能力白名单，可在主页的 **VLM 模型** 下拉框中选择。
+- 兼容视觉模型名称 `deepseek-v4-flash` 与 `deepseek-v4-flash-vision-exp`。
+- 修复自定义 OpenAI 兼容厂商缺少内置元数据时的配置解析，让 LLM 和 VLM 使用对应厂商保存的 API Host、API Key 与所选模型。
+- 补充视觉模型和自定义厂商回归测试，并用可重复的模拟网络错误验证 DNS 失败处理。
+
+本次本地验证完成了 Debug APK 构建与签名校验。904 项单元测试中，785 项通过、119 项跳过、0 项失败。真机运行与真实 API 调用仍待验证。
+
+Debug 安装包的应用名为 `FloatyAnswer_debug`，包名为 `com.hwb.aianswerer.debug`，可与原版并存，安装后需要重新填写模型配置。
 
 ### 功能亮点
 
 - 🖼️ 屏幕快速截取：一键截取当前屏幕，自动聚焦题目区域
 - 📖 屏幕读取模式：通过无障碍服务直接读取屏幕文字，无需截图，速度更快
 - 📝 智能文字识别：支持中日韩法德西葡等本地 OCR 识别 + 俄阿等 VLM 云端识别
-- 👁️ 视觉模型支持：可使用视觉模型替代 OCR，适合噪音较多的页面
+- 👁️ 视觉模型支持 DeepSeek Flash 等 VLM，适合含图或文字噪音较多的页面
 - 🔍 联网搜索增强：支持 LLM 工具调用模式（模型自主决定搜索时机并可多轮追问）
 - 🤖 AI 实时答题：根据题型生成解析，并自动复制答案
 - 📋 批量答题：截图包含多题时逐题搜索并返回所有答案
@@ -34,6 +44,8 @@ FloatyAnswer 是一款基于 OCR/视觉模型与大语言模型的安卓答题�
 - 🌐 多语言输出：UI 支持中英双语，AI 输出支持 11 种语言（中英日法德西葡韩俄阿 + 自适应）
 
 ### 工作原理
+
+常规截图流程会先通过 OCR 或 VLM 提取题目文本，再将文本交给 LLM 答题。开启 VLM 时，截图会发送到配置的视觉模型 API。
 
 ```
 ┌──────────┐   ┌──────────────────┐   ┌──────────────┐   ┌───────────────┐   ┌──────────┐
@@ -51,31 +63,27 @@ FloatyAnswer 是一款基于 OCR/视觉模型与大语言模型的安卓答题�
 
 ### 快速上手
 
-**第一步：配置模型（只需一次）**
+**第一步，配置模型（以 DeepSeek Flash 为例）**
 
 1. 打开应用，点击主页右上角**设置**图标。
-2. 进入**模型设置**（LLM 答题模型）：
-   - 从厂商列表中选择一家（如 DeepSeek、OpenAI 兼容服务等，内置 50+ 厂商预设）；
-   - 展开厂商卡片，填入你的 **API Key**（API 地址一般已自动填好）；
-   - 点击**测试连接**确认可用；
-   - 在模型列表中选择要使用的模型。
-3. （可选）进入**视觉模型设置**，开启视觉模型开关并同样配置 API Key 与模型——开启后遇到截图噪音较多或含图的题目时，会优先用视觉模型理解题目。
-4. 返回主页，若底部「进入答题模式」按钮可点击（非灰色），说明模型已配置完成。
+2. 进入**模型厂商**，展开 **DeepSeek** 卡片，开启厂商开关并填写 **API Key**。API Host 使用预填的 `https://api.deepseek.com/v1`。
+3. 点击 **+ 添加模型**，勾选 `deepseek-flash`。若列表中没有该模型，点击弹层右上角 **↻** 从当前 API 刷新模型列表，再勾选。
+4. 点击**确认**，然后点击当前厂商卡片底部的**保存配置**。
+5. 返回主页，在**语言模型**下拉框选择答题模型，在 **VLM 模型**下拉框选择 `deepseek-flash`。两个位置均可使用该模型。
 
-**第二步：开始答题**
+使用**自定义 OpenAI 兼容**卡片时，同样填写 Host 和 Key、开启厂商，再添加模型并保存。连接 DeepSeek 官方 API 时，Host 可以填写 `https://api.deepseek.com` 或 `https://api.deepseek.com/v1`，应用会补齐 Chat Completions 路径。使用其他兼容服务时，填写该服务提供的 Host、Key，并选择其支持的模型。
+
+**第二步，启动截图与视觉识别**
 
 1. 回到主页，点击**进入答题模式**。
-2. 首次使用按提示授权：
-   - **悬浮窗权限**：用于显示悬浮球和答案卡片（必开）；
-   - **屏幕录制权限**：截图模式需要（一次性授权，之后可长期使用）；
-   - 或开启**无障碍服务**：使用「屏幕读取」模式需要。
-3. 屏幕边缘会出现悬浮球。
+2. 按系统提示授予**悬浮窗权限**和截图所需的**屏幕录制权限**。使用「屏幕读取」模式时，按提示开启**无障碍服务**。
+3. 屏幕边缘出现悬浮球后，长按展开快捷面板，开启 **VLM**。模型选择与 VLM 开关分别设置。
 
-**第三步：答题**
+**第三步，识题与答题**
 
-1. 停留在题目页面（任意 App 均可）。
-2. 点击悬浮球 → 自动截图并识别题目 → 弹出答案卡片。
-3. 答案已按设置自动复制到剪贴板，可直接粘贴使用；点击卡片可展开查看完整解析。
+1. 打开要练习的题目页面。
+2. 点击悬浮球，依次完成截图、VLM 识别题目文本、LLM 答题，并显示答案卡片。
+3. 根据设置，答案可自动复制到剪贴板，点击卡片可展开查看完整解析。
 
 > 💡 截图后如需手动修正识别文本，可在确认页编辑后再提交。
 
@@ -83,7 +91,7 @@ FloatyAnswer 是一款基于 OCR/视觉模型与大语言模型的安卓答题�
 
 #### 1. 截图答题（默认模式）
 
-点击悬浮球 → 截取当前屏幕 → OCR 识别 → LLM 答题。适合大多数场景。
+点击悬浮球 → 截取当前屏幕 → 本地 OCR 或 VLM 识别文字 → LLM 答题。适合大多数场景。
 
 配合**裁剪模式**使用（设置 → 答题设置）：
 
@@ -154,17 +162,18 @@ FloatyAnswer 是一款基于 OCR/视觉模型与大语言模型的安卓答题�
 ### 常见问题
 
 - **提示缺少权限？** 前往系统设置搜索「悬浮窗」「屏幕录制」「无障碍」等选项，手动开启相关权限。
-- **「进入答题模式」按钮是灰色的？** 说明模型尚未配置完成：需要至少一个厂商已填写 API Key 并选中模型。前往设置 → 模型设置完成配置。
+- **「进入答题模式」按钮是灰色的？** 前往设置 → 模型厂商，启用厂商、填写 API Key、添加模型并保存，然后在主页选择语言模型。
+- **VLM 列表找不到 DeepSeek Flash？** 在模型厂商中为 DeepSeek 或自定义 OpenAI 兼容厂商添加 `deepseek-flash` 并保存，再返回主页选择 VLM 模型。旧模型列表可通过「+ 添加模型」弹层右上角的 ↻ 刷新。本分支已内置该模型的视觉能力识别规则。
 - **识别不准确？** 在确认页手动修正文本，或重新截图后再提交；图片噪音多时可开启视觉模型（VLM）。
 - **AI 没有回应？** 检查网络、确认 API Key 有效，并确保模型账户余额充足；可在设置中用「测试连接」快速排查。
 - **屏幕读取模式没有反应？** 确认无障碍服务已开启且未被系统省电策略限制。
 - **联网搜索不生效？** 检查设置中搜索开关和供应商 API Key；若模型不支持函数调用，该功能会被自动禁用。
 - **答案卡片挡住了屏幕？** 点击卡片可折叠为仅摘要，或直接关闭卡片；悬浮球可拖到任意位置。
-- **担心隐私？** 所有配置仅保存在本地（API Key 使用加密存储），不注册账号、不上传使用数据；识别内容仅在答题时发送到你指定的 AI 服务。
+- **担心隐私？** 配置保存在本地，API Key 使用加密存储。答题时会将识别文本发送到配置的语言模型服务，VLM 识别还会将截图发送到配置的视觉模型服务。
 
 ### 隐私与免责声明
 
-- 应用会将识别出的文字发送至所选 AI 服务，请避免上传敏感或受限内容。
+- 应用会将识别出的文字发送至所选答题模型，开启 VLM 时还会将截图发送至所选视觉模型，请避免上传敏感或受限内容。
 - API 请求可能产生费用（如 DeepSeek），请留意使用频率。
 - 本应用仅用于学习与研究，请遵守考试纪律和法律法规，任何违规使用后果自负。
 
@@ -175,11 +184,11 @@ FloatyAnswer 是一款基于 OCR/视觉模型与大语言模型的安卓答题�
 | 语言 | Kotlin 2.0.21 |
 | UI | Jetpack Compose + Material3 |
 | OCR | Google ML Kit (中文/拉丁/日/韩) + VLM 降级 |
-| 视觉模型 | OpenAI 兼容接口 (DeepSeek/GPT-4o 等) |
+| 视觉模型 | OpenAI 兼容接口（DeepSeek Flash / GPT-4o 等） |
 | 联网搜索 | 多供应商 (Tavily/Bocha/Zhipu/ExaMCP 等 10 家) |
 | 网络 | OkHttp 4.12.0 |
 | 存储 | MMKV + EncryptedSharedPreferences |
-| 构建 | Gradle (AGP 8.13.0) |
+| 构建 | Gradle 8.9 · AGP 8.7.3 |
 
 ### 项目结构
 
@@ -257,4 +266,4 @@ com.hwb.aianswerer/
 
 ### License
 
-This project is released under the [GNU Affero General Public License v3.0](/LICENSE)
+This project is released under the GNU Affero General Public License v3.0. [License](LICENSE)

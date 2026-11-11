@@ -51,7 +51,7 @@ internal val MODEL_PROVIDERS = listOf(
     ProviderDef("custom", "自定义 OpenAI 兼容", ModelProviderType.CUSTOM, "", listOf(), null, null),
     // 国内常用提供者
     ProviderDef("deepseek", "DeepSeek", ModelProviderType.OPENAI, "https://api.deepseek.com/v1",
-        listOf("deepseek-chat", "deepseek-reasoner"),
+        listOf("deepseek-flash", "deepseek-chat", "deepseek-reasoner"),
         "https://deepseek.com", "https://platform.deepseek.com/api_keys"),
     ProviderDef("dashscope", "阿里百炼", ModelProviderType.OPENAI, "https://dashscope.aliyuncs.com/compatible-mode/v1",
         listOf("qwen-max", "qwen-plus", "qwen-turbo", "qwen-vl-max", "qwen-vl-plus"),

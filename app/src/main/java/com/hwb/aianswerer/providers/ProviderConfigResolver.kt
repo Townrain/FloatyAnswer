@@ -24,19 +24,17 @@ object ProviderConfigResolver {
             val modelName = readRawModelName()
             val mergedProviders = ProviderStorage.getMergedProviders()
                 .filter { it.enabled && it.apiKey.isNotBlank() }
-            if (mergedProviders.isEmpty()) return null
+            val userConfigs = ProviderStorage.getEnabledProvidersFromUserConfigs()
 
             if (modelName.isNotBlank()) {
-                val userConfigs = ProviderStorage.getEnabledProvidersFromUserConfigs()
-                val targetId = userConfigs.firstOrNull { it.selectedModels.contains(modelName) }?.id
-                if (targetId != null) {
-                    mergedProviders.firstOrNull { it.id == targetId } ?: mergedProviders.first()
-                } else {
-                    mergedProviders.first()
+                val target = userConfigs.firstOrNull { it.selectedModels.contains(modelName) }
+                if (target != null) {
+                    return mergedProviders.firstOrNull { it.id == target.id }
+                        ?: target.takeIf { it.apiHost.isNotBlank() && it.apiKey.isNotBlank() }
                 }
-            } else {
-                mergedProviders.first()
             }
+            mergedProviders.firstOrNull()
+                ?: userConfigs.firstOrNull { it.apiHost.isNotBlank() && it.apiKey.isNotBlank() }
         } catch (_: Exception) { null }
     }
 
@@ -67,13 +65,15 @@ object ProviderConfigResolver {
     }
 
     /**
-     * Resolve model name from the first enabled provider in the provider system.
+     * Resolve the selected model using the same provider as the API URL and key.
      * @return model name or empty string
      */
     fun resolveModelName(): String {
         return try {
-            ProviderStorage.getEnabledProviders()
-                .firstOrNull()?.selectedModels?.firstOrNull() ?: ""
+            val provider = resolveApiProvider() ?: return ""
+            val modelName = readRawModelName()
+            modelName.takeIf { it in provider.selectedModels }
+                ?: provider.selectedModels.firstOrNull() ?: ""
         } catch (_: Exception) { "" }
     }
 
@@ -103,9 +103,10 @@ object ProviderConfigResolver {
             val allProviders = ProviderStorage.getMergedProviders()
                 .filter { it.enabled && it.apiKey.isNotBlank() }
             if (visionModel.isNotBlank()) {
-                val targetId = userConfigs.firstOrNull { it.selectedModels.contains(visionModel) }?.id
-                if (targetId != null) {
-                    allProviders.firstOrNull { it.id == targetId }
+                val target = userConfigs.firstOrNull { it.selectedModels.contains(visionModel) }
+                if (target != null) {
+                    allProviders.firstOrNull { it.id == target.id }
+                        ?: target.takeIf { it.apiHost.isNotBlank() && it.apiKey.isNotBlank() }
                 } else {
                     allProviders.firstOrNull()
                 }

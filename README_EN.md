@@ -1,14 +1,13 @@
-# FloatyAnswer
+# FloatyAnswer — Android Screenshot Assistant with DeepSeek Flash & VLM
 
 <p align="center">
-<a href="https://github.com/Townrain/FloatyAnswer/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/Townrain/FloatyAnswer"></a>
-<a href="https://github.com/Townrain/FloatyAnswer/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/Townrain/FloatyAnswer"></a>
-<a href="https://github.com/Townrain/FloatyAnswer/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/Townrain/FloatyAnswer/android_build.yml"></a>
-<a href="/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-AGPLv3-blue"></a>
+<a href="https://github.com/delayyyyyyy/FloatyAnswer/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/delayyyyyyy/FloatyAnswer"></a>
+<a href="https://github.com/delayyyyyyy/FloatyAnswer/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/delayyyyyyy/FloatyAnswer/android_build.yml"></a>
+<a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-AGPLv3-blue"></a>
 </p>
 
 
-> 📌 **Project Origin**: This project is forked and independently developed from [wb-hwang/AIAnswerer-Android](https://github.com/wb-hwang/AIAnswerer-Android) (MIT License). The upstream has been inactive since October 2025. This repository continues active development. Thanks to the original author [@wb-hwang](https://github.com/wb-hwang) for the excellent foundational work.
+> This repository is a fork of Townrain/FloatyAnswer, licensed under AGPL-3.0. Its earlier foundation is wb-hwang/AIAnswerer-Android, released under the MIT License. Thanks to both projects and their contributors. [Townrain/FloatyAnswer](https://github.com/Townrain/FloatyAnswer) · [wb-hwang/AIAnswerer-Android](https://github.com/wb-hwang/AIAnswerer-Android)
 
 [中文](README.md) | [English](#english-user-guide)
 
@@ -16,7 +15,16 @@
 
 ### App Introduction
 
-FloatyAnswer is an Android answering tool based on OCR/vision models and large language models. It captures screenshots through a floating window to recognize questions and calls DeepSeek AI and other OpenAI-compatible models to quickly provide answers. It's suitable for practice, gap-filling, or self-assessment scenarios.
+FloatyAnswer is an open-source Android screenshot assistant for screenshot question answering through a floating overlay. It recognizes questions with local OCR or a vision-language model (VLM), then sends the recognized text to a large language model for an answer. This fork adds DeepSeek Flash vision support and improves custom OpenAI-compatible API configuration for practice and self-assessment.
+
+### This fork's updates
+
+- Added `deepseek-flash` to the built-in DeepSeek model list and vision capability rules, with support for the aliases `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp`, so selected models can appear in the home screen's **VLM 模型** menu.
+- Fixed custom OpenAI-compatible provider resolution so the selected model, API Host, and API Key stay associated with the same provider for recognition and answering.
+- Added regression tests for vision-model recognition and custom providers, and made the DNS failure test reproducible with a simulated network error.
+- Completed local unit-test validation with **904 tests — 785 passed, 119 skipped, and 0 failures**.
+- Built a debug APK using the `com.hwb.aianswerer.debug` application ID. It can be installed alongside the release app and needs its own permission grants, API credentials, and model configuration.
+- On-device screenshot capture and live API behavior still need verification.
 
 ### Feature Highlights
 
@@ -43,6 +51,8 @@ FloatyAnswer is an Android answering tool based on OCR/vision models and large l
 └──────────┘   └──────────────────┘   └──────────────┘   └───────────────┘   └──────────┘
 ```
 
+With VLM enabled, the screenshot is uploaded to the selected vision model, which returns recognized text. The selected language model then uses that text to answer the question.
+
 ### Installation and Preparation
 
 1. Use a device with Android 10 or above and keep the network connected.
@@ -52,31 +62,25 @@ FloatyAnswer is an Android answering tool based on OCR/vision models and large l
 
 ### Quick Start
 
-**Step 1: Configure your model (one-time setup)**
+**Step 1 — Configure your provider and models**
 
-1. Open the app and tap the **Settings** icon in the top-right corner of the home screen.
-2. Open **Model Settings** (the LLM answering model):
-   - Pick a provider from the list (DeepSeek, OpenAI-compatible services, etc. — 50+ provider presets built in);
-   - Expand the provider card and enter your **API Key** (the API URL is usually pre-filled);
-   - Tap **Test Connection** to verify it works;
-   - Select the model to use from the model list.
-3. (Optional) Open **Vision Model Settings**, enable the vision model toggle, and configure its API Key and model — with this enabled, image-heavy or noisy questions are handled by the vision model first.
-4. Return to the home screen. If the **Start Answer Mode** button at the bottom is enabled (not greyed out), your model is configured.
+1. Open **Settings → 模型厂商 (Model providers)**.
+2. Expand the **DeepSeek** or **自定义 OpenAI 兼容 (Custom OpenAI-compatible)** provider card. For the official DeepSeek API, use `https://api.deepseek.com/v1` as the **API Host**, enter your **API Key**, and enable the provider's switch. The app also accepts `https://api.deepseek.com` and appends the Chat Completions path.
+3. Tap **+ 添加模型 (Add model)**. Select `deepseek-flash` from the list. If it is missing, tap **↻** to fetch the provider's available models, then select it. Model selection uses the list loaded in this dialog.
+4. Tap **确认 (Confirm)**, then **保存配置 (Save configuration)** at the bottom of the current provider card. You can also use the card's connection test to check your credentials.
+5. Return to the home screen. Select the answering model under **语言模型 (Language model)** and the recognition model under **VLM 模型 (VLM model)**. Select `deepseek-flash` in both menus to use it for both stages.
 
-**Step 2: Start answering**
+**Step 2 — Start answering**
 
-1. Back on the home screen, tap **Start Answer Mode**.
-2. On first use, grant permissions as prompted:
-   - **Floating window** permission: required to show the floating pill and answer cards;
-   - **Screen recording** permission: needed for screenshot mode (one-time grant, usable long-term);
-   - Or enable the **Accessibility service**: required for "Screen Reading" mode.
-3. A floating pill appears on the edge of the screen.
+1. On the home screen, tap **Start Answer Mode**.
+2. Grant the requested permissions. Floating-window permission allows the floating pill and answer cards to appear over other apps. Follow the system's screen-recording permission prompts for screenshot mode, or enable the accessibility service for Screen Reading mode.
+3. When the floating pill appears, long-press it to open the quick panel and enable the **VLM** switch for vision recognition.
 
-**Step 3: Answer questions**
+**Step 3 — Answer questions**
 
-1. Stay on the question page (works in any app).
-2. Tap the floating pill → the screen is captured and the question is recognized → an answer card pops up.
-3. The answer is copied to your clipboard automatically (per settings), so you can paste it directly; tap the card to expand the full explanation.
+1. Open the question page you want to capture.
+2. Tap the floating pill. With VLM enabled, the app captures a screenshot, sends it to the VLM for text recognition, and sends the resulting text to the selected language model for answering.
+3. Read the answer card and tap it to expand the full explanation. Automatic clipboard copying follows your settings.
 
 > 💡 If you need to correct the recognized text manually, edit it on the confirmation page before submitting.
 
@@ -84,7 +88,7 @@ FloatyAnswer is an Android answering tool based on OCR/vision models and large l
 
 #### 1. Screenshot Mode (default)
 
-Tap the floating pill → capture the current screen → OCR recognition → LLM answering. Suitable for most scenarios.
+Tap the floating pill → capture the current screen → local OCR or VLM text recognition → LLM answering. Suitable for most scenarios.
 
 Combine with **crop modes** (Settings → Answer Settings):
 
@@ -155,17 +159,18 @@ Supports LLM Tool Calling web search: when enabled, the model decides whether to
 ### FAQ
 
 - **Missing permissions prompt?** Go to system settings and search for "floating window", "screen recording", "accessibility", etc., and enable the relevant permissions manually.
-- **The "Start Answer Mode" button is greyed out?** Your model is not fully configured: you need at least one provider with an API Key entered and a model selected. Go to Settings → Model Settings.
+- **The "Start Answer Mode" button is greyed out?** Open Settings → 模型厂商 (Model providers), enable a provider, enter its API Key, select a model, and save the configuration.
+- **DeepSeek Flash is missing from the VLM list?** Add `deepseek-flash` under the DeepSeek or custom OpenAI-compatible provider, save the configuration, and select it in the home screen's VLM menu. Use **↻** in the Add model dialog to refresh an older model list. This fork includes the model's vision capability rules.
 - **Inaccurate recognition?** Manually correct the text on the confirmation page, or take a new screenshot; enable the Vision Model (VLM) for noisy images.
 - **AI not responding?** Check the network, confirm the API Key is valid, and make sure your model account has sufficient balance; use "Test Connection" in Settings to diagnose quickly.
 - **Screen Reading mode not working?** Confirm the accessibility service is enabled and not restricted by the system's battery-saving policy.
 - **Web search not working?** Check the search toggle and provider API Key in Settings; if the model doesn't support function calling, this feature is automatically disabled.
 - **The answer card is blocking the screen?** Tap it to collapse to a summary, or close it; the floating pill can be dragged anywhere.
-- **Worried about privacy?** All configuration is stored locally (API Keys use encrypted storage). No account, no usage-data upload; recognized content is only sent to the AI service you configured, when answering.
+- **Worried about privacy?** Configuration is stored locally, and API Keys use encrypted storage. Recognized text is sent to the configured language-model service when answering. VLM recognition also uploads screenshots to the configured vision-model service.
 
 ### Privacy and Disclaimer
 
-- The application will send recognized text to the selected AI service. Please avoid uploading sensitive or restricted content.
+- The application sends recognized text to the selected language-model service. Enabling VLM recognition also sends screenshots to the selected vision-model service. Please consider the contents of the captured screen before submitting it.
 - API requests may incur charges (e.g., DeepSeek), please pay attention to usage frequency.
 - This application is only for learning and research purposes. Please comply with exam discipline and laws and regulations. Any consequences of illegal use are at your own risk.
 
@@ -176,11 +181,11 @@ Supports LLM Tool Calling web search: when enabled, the model decides whether to
 | Language | Kotlin 2.0.21 |
 | UI | Jetpack Compose + Material3 |
 | OCR | Google ML Kit (Chinese/Latin/Japanese/Korean) + VLM fallback |
-| Vision Model | OpenAI Compatible API (DeepSeek/GPT-4o, etc.) |
+| Vision Model | OpenAI-compatible API (DeepSeek Flash / GPT-4o, etc.) |
 | Web Search | Multi-provider (Tavily/Bocha/Zhipu/ExaMCP etc., 10 providers) |
 | Network | OkHttp 4.12.0 |
 | Storage | MMKV + EncryptedSharedPreferences |
-| Build | Gradle (AGP 8.13.0) |
+| Build | Gradle 8.9 + Android Gradle Plugin 8.7.3 |
 
 ### Project Structure
 
@@ -258,4 +263,4 @@ See [CHANGELOG.md](CHANGELOG.md) or [变更日志](变更日志.md).
 
 ### License
 
-This project is released under the [GNU Affero General Public License v3.0](/LICENSE)
+This project is released under the GNU Affero General Public License v3.0. [License](LICENSE)
